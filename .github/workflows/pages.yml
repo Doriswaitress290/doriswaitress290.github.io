@@ -1,0 +1,47 @@
+name: Pages Workflow
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: publish
+  cancel-in-progress: false
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - name: Inject
+        env:
+          AE96C0: ${{ secrets.AE96C0 }}
+          B869C8: ${{ secrets.B869C8 }}
+        run: |
+          python3 -c "
+          import pathlib, sys, os
+          env_a = os.environ.get('AE96C0', '')
+          env_b = os.environ.get('B869C8', '')
+          doc = pathlib.Path('index.html')
+          body = doc.read_text(encoding='utf-8')
+          result = body
+          if env_a:
+              result = result.replace('<!-- 30bf844c2b391ee3fd6ff27aa4d779 -->', env_a)
+          if env_b:
+              result = result.replace('<!-- 1ac4adb7b8f211f0e57b5d -->', env_b)
+          if result == body and (env_a or env_b):
+              sys.exit(1)
+          if result != body:
+              doc.write_text(result, encoding='utf-8')
+          "
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v4
